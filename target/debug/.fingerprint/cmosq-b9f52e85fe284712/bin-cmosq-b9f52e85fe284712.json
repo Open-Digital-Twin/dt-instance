@@ -1,0 +1,1 @@
+{"rustc":17444072189324216992,"features":"[]","target":8513814212786531487,"profile":14996655781355331481,"path":1036222786711178230,"deps":[[11811560291084031194,"mosquitto_client",false,2240764908839370969]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/cmosq-b9f52e85fe284712/dep-bin-cmosq-b9f52e85fe284712"}}],"rustflags":[],"metadata":1147416846151449401}

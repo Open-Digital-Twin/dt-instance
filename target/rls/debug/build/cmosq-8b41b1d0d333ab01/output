@@ -1,0 +1,2 @@
+cargo:rustc-link-search=native=/home/rafael/Desktop/Rust/cmosq/deps
+rustc-link-lib=static=mosquitto
