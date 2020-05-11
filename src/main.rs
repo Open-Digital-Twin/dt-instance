@@ -1,8 +1,8 @@
 extern crate rumqtt;
 extern crate chrono;
-use rumqtt::{MqttClient,MqttOptions,QoS,Message};
+use rumqtt::{MqttClient,MqttOptions,QoS};
 //use chrono::prelude;
-use std::{thread, time::Duration};
+use std::{thread, time::Duration, sync::Arc};
 
 
 fn main() {
@@ -14,11 +14,11 @@ fn main() {
 
 
     std::thread::spawn(move || {
-    let mut _sender = 0;
     let dur = Duration::from_secs(1);
         
-        for _sender in 0..30{
-        client.publish("test", QoS::AtLeastOnce,false,"UwU").unwrap();
+        for sender in 0..30{
+        let g = sender.to_string();    
+        client.publish("test", QoS::AtLeastOnce,false,g).unwrap();
         thread::sleep(dur);
 
     }});
@@ -26,9 +26,24 @@ fn main() {
 
     let mut it = 0;
     for notification in notifications {
-        println!("{:?}", notification);
-        it += 1;
-        if it == 30 {break};
-    }
+    
 
+    match notification
+      {
+        rumqtt::Notification::Publish(publish) =>
+        {
+            let payload = Arc::try_unwrap(publish.payload).unwrap();
+            let text: String = String::from_utf8(payload).expect("cant convert string");
+            println!("recieved message {}", text);
+        }
+
+        _ => println!("{:?}",notification)
+     }
+
+    it += 1;
+    if it == 30{break};
+    
 }
+}
+
+
