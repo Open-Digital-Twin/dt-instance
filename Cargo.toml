@@ -10,3 +10,4 @@ edition = "2018"
 [dependencies]
 rumqtt = "0.31.0"
 chrono = "0.4"
+text_io = "0.1.8"
