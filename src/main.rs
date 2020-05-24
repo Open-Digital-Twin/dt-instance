@@ -4,7 +4,7 @@ extern crate text_io;
 use text_io::read;
 use rumqtt::{MqttClient,MqttOptions,QoS};
 use chrono::prelude::*;
-use std::{thread, time::Duration, sync::Arc};
+use std::{sync::Arc};
 
 fn main() {
 
@@ -23,22 +23,8 @@ fn main() {
          
     }
 
+    println!("Hearing on chosen topics : \n");
 
-    std::thread::spawn(move || {
-    let dur = Duration::from_secs(1);
-        
-        for sender in 0..30{
-        let g = sender.to_string();    
-        client.publish("test", QoS::AtLeastOnce,false,g).unwrap();
-        if sender % 3 == 0{client.publish("hello", QoS::AtLeastOnce,false,"something else").unwrap();}
-        thread::sleep(dur);
-
-    }});
-
-
-
-
-    let mut it = 0;
     for notification in notifications {
     
 
@@ -56,8 +42,6 @@ fn main() {
         _ => println!("{:?}",notification)
      }
 
-    it += 1;
-    if it == 30{break};
     
 }
 }
