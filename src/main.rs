@@ -5,14 +5,40 @@ use text_io::read;
 use rumq_client::{eventloop,MqttEventLoop,MqttOptions, QoS, Request, Subscribe};
 use chrono::prelude::*;
 use std::time::Duration;
+use std::env;
 
 #[tokio::main(basic_scheduler)]
 async fn main() {
-  // TODO: Connect to DB, from parameters in .env
 
+let args : Vec<String> = env::args().collect();
+
+let mut host = "localhost";
+let mut port = "1883";
+
+
+match args.len() -1 {
+
+      1 =>{
+        host = &args[1];
+      }
+
+      2 =>{
+        host = &args[1];
+        port = &args[2];
+      }
+
+      _ => {
+        println!("Invalid number of arguments. Defaulting to 'localhost' and '1883'\n");
+      }
+}
+
+  // TODO: Connect to DB, from parameters in .env
   // TODO: receive connection details as parameters.
+
   let (tx,rx) = channel(10);
-  let mut mqttoptions = MqttOptions::new("ELE CONECTOU SIM", "localhost", 1883);
+  let port_in_u = port.parse::<u16>().unwrap();
+  //println!("HOST IS {} , PORT IS {}" , host,port_in_u);
+  let mut mqttoptions = MqttOptions::new("INSTANCE",host, port_in_u);
 
   mqttoptions.set_keep_alive(5).set_throttle(Duration::from_secs(1));
   let mut eloop = eventloop(mqttoptions, rx);
