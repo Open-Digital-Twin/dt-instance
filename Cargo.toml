@@ -3,11 +3,11 @@ name = "dt-instance"
 version = "0.1.0"
 authors = ["Rafael"]
 edition = "2018"
-#build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rumqtt = "0.31.0"
 chrono = "0.4"
 text_io = "0.1.8"
+rumq-client = "0.1.0-alpha.10"
+tokio = { version = "0.2", features = ["io-util", "tcp", "dns", "stream", "sync", "time", "macros"] }
