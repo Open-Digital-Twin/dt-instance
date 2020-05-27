@@ -1,0 +1,8 @@
+version: '3'
+services:
+  dt:
+    build: .
+    ports:
+      - "5000:5000"
+  mqtt-broker:
+    image: "eclipse-mosquitto:latest"
