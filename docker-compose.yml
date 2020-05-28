@@ -1,15 +1,25 @@
 version: '3'
 services:
-  dt-instance:
+  twin:
     build: .
     ports:
       - "5000:5000"
+    depends_on:
+      - mqtt-broker
     volumes:
       - .:/code
+    networks:
+      - default
   mqtt-broker:
     image: "eclipse-mosquitto:latest"
-    expose: [1883]
+    ports: 
+      - "1883:1883"
+    networks:
+      - default
   db-cassandra:
     image: "cassandra"
     expose: [9042]
-
+    networks:
+      - default
+networks:
+  default:
