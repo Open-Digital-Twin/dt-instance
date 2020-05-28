@@ -1,22 +1,19 @@
-FROM rust:latest
-WORKDIR /usr/src/dt-instance
-COPY . .
+FROM rust:latest as builder
+RUN apt-get update
+RUN cd /tmp && USER=root cargo new --bin dt-instance
+WORKDIR /tmp/dt-instance
 
-RUN cargo install --path .
+# Build Rust skeleton project, caching dependencies, before building.
+COPY Cargo.toml Cargo.lock ./
+RUN touch build.rs && echo "fn main() {println!(\"cargo:rerun-if-changed=\\\"/tmp/dt-instance/build.rs\\\"\");}" >> build.rs
+RUN cargo build --release
 
+# Force the build.rs script to run by modifying it
+RUN echo " " >> build.rs
+COPY ./src ./src
+RUN cargo build --release
 
+# Push built release to slim container
 FROM debian:buster-slim
-RUN apt-get update && apt-get install -y extra-runtime-dependencies
-COPY --from=builder /usr/local/cargo/bin/myapp /usr/local/bin/myapp
+COPY --from=builder /usr/local/cargo/bin/dt-instance /usr/local/bin/dt-instance
 CMD ["dt-instance"]
-
-# WORKDIR /code
-# ENV FLASK_APP app.py
-# ENV FLASK_RUN_HOST 0.0.0.0
-# RUN apk add --no-cache gcc musl-dev linux-headers
-# COPY requirements.txt requirements.txt
-
-# RUN pip install -r requirements.txt
-# CMD ["flask", "run"]
-
-
