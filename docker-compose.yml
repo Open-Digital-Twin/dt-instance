@@ -10,6 +10,9 @@ services:
       - .:/code
     networks:
       - default
+  twin-webserver:
+    build: ../dt-instance-webserver/.
+    image: "dt-instance-webserver"
   mqtt-broker:
     image: "eclipse-mosquitto:latest"
     ports: 
