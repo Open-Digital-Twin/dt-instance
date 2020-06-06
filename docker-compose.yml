@@ -23,7 +23,7 @@ services:
       - SERVER_ADDRESS=0.0.0.0:8080
       - DB_ADDRESS=scylla-db:9042
       - SECRET_KEY=Xqv8jTGLxT
-      - TWIN_INSTANCE=bbe77760-5391-4673-aa5a-1fd790b12bfb
+      - TWIN_INSTANCE=38162cb0-e585-43d7-b55d-5c240b2bfb7c
   mqtt-broker:
     image: "eclipse-mosquitto:latest"
     ports:
