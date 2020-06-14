@@ -4,37 +4,67 @@ use tokio::{task,time};
 use text_io::read;
 use rumq_client::{eventloop,MqttEventLoop,MqttOptions, QoS, Request, Subscribe};
 use chrono::prelude::*;
+
 use std::time::Duration;
 use std::env;
 
+use std::sync::Arc;
+
+use uuid::Uuid;
+
+use cdrs::authenticators::{NoneAuthenticator};
+use cdrs::cluster::session::{Session};
+use cdrs::cluster::{ClusterTcpConfig, TcpConnectionPool};
+use cdrs::load_balancing::RoundRobin;
+
+use serde::{Deserialize};
+
+
+mod models;
+use models::app::CurrentSession;
+
+pub fn init_db_session() -> Arc<CurrentSession> {
+  let db_address = env::var("DB_ADDRESS").unwrap();
+
+  let node = NodeTcpConfigBuilder::new(
+    &db_address,
+    NoneAuthenticator {}
+  ).build();
+
+  let cluster_config = ClusterTcpConfig(vec![node]);
+
+  let _session: Arc<CurrentSession> = Arc::new(
+    new_session(&cluster_config, RoundRobin::new())
+      .expect("session should be created")
+  );
+
+  _session
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+pub fn get_db_session() -> Arc<CurrentSession> {
+  let _session = init_db_session();
+
+  assert!(_session.query("USE dt;").is_ok(), "Should have set keyspace.");
+
+  _session
+}
+
 #[tokio::main(basic_scheduler)]
 async fn main() {
-  let args : Vec<String> = env::args().collect();
+  let host = env::var("MQTT_BROKER_ADDRESS").unwrap();
+  let port = env::var("MQTT_BROKER_PORT").unwrap().parse::<u16>().unwrap();
 
-  let mut host = "localhost";
-  let mut port = "1883";
+  let db = env::var("DB_ADDRESS").unwrap();
+  let twin = env::var("TWIN_INSTANCE").unwrap();
 
-  match args.len() -1 {
-    1 =>{
-      host = &args[1];
-    }
-
-    2 =>{
-      host = &args[1];
-      port = &args[2];
-    }
-
-    _ => {
-      println!("Invalid number of arguments. Defaulting to 'localhost' and '1883'\n");
-    }
-}
 
   // TODO: Connect to DB, from parameters in .env
   // TODO: receive connection details as parameters.
 
   let (tx,rx) = channel(10);
-  let port_in_u = port.parse::<u16>().unwrap();
-  let mut mqttoptions = MqttOptions::new("INSTANCE", host, port_in_u);
+  let mut mqttoptions = MqttOptions::new("INSTANCE", host, port);
 
   mqttoptions.set_keep_alive(5).set_throttle(Duration::from_secs(1));
   let mut eloop = eventloop(mqttoptions, rx);
