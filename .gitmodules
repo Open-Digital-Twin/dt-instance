@@ -1,3 +1,6 @@
 [submodule "shared"]
 	path = shared
 	url = git@github.com:Open-Digital-Twin/dt-sharedconfig.git
+[submodule "src/common"]
+	path = src/common
+	url = git@github.com:Open-Digital-Twin/dt-common.git
