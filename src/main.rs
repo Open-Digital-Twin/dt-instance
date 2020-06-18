@@ -34,7 +34,7 @@ async fn main() {
   let host = env::var("MQTT_BROKER_ADDRESS").unwrap();
   let port = env::var("MQTT_BROKER_PORT").unwrap().parse::<u16>().unwrap();
 
-  let mut mqttoptions = MqttOptions::new(twin, host, port);
+  let mut mqttoptions = MqttOptions::new(format!("twin-{}", twin), host, port);
   mqttoptions.set_keep_alive(5).set_throttle(Duration::from_secs(1));
 
   let (mut tx,rx) = channel(10);
@@ -112,7 +112,6 @@ fn get_subscribe_and_unsubscribe_lists(subscribed_to: &Vec<String>, current_topi
 fn get_twin_elements() -> Vec<Element> {
   let session = get_db_session();
   let twin = env::var("TWIN_INSTANCE").unwrap();
-  
 
   let element_rows = session.query(format!("SELECT * FROM element WHERE twin = {} ALLOW FILTERING", twin))
     .expect("Elements from twin")
@@ -177,10 +176,11 @@ fn get_instance_topics() -> Vec<String> {
 }
 
 async fn listen_topics(eloop: &mut MqttEventLoop, tx: & Sender<Request>) {  
-  loop {
-    connect_to_topics(tx.clone()).await;
+  connect_to_topics(tx.clone()).await;
 
+  loop {
     let mut stream = eloop.connect().await.unwrap(); // TODO handle connection error. If broker doesn't exist, it crashes here.
+
     while let Some(item) = stream.next().await {
       match item {
         rumq_client::Notification::Puback(ack) => {

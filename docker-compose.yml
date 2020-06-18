@@ -1,20 +1,31 @@
 version: '3'
 services:
+  client:
+    build: ../dt-client
+    depends_on:
+      - mqtt-broker
+      - twin
+    environment:
+      - RUST_LOG=info
+      - MQTT_BROKER_ADDRESS=mqtt-broker
+      - MQTT_BROKER_PORT=1883
   twin:
     build: .
     depends_on:
       - mqtt-broker
     environment:
-      - RUST_LOG=info
       - MQTT_BROKER_ADDRESS=mqtt-broker
       - MQTT_BROKER_PORT=1883
+      - RUST_LOG=info
       - DB_ADDRESS=scylla-db:9042
       - TWIN_INSTANCE=38162cb0-e585-43d7-b55d-5c240b2bfb7c
     networks:
       - default
+    restart: always
   twin-webserver:
     build: ../dt-instance-webserver/.
     image: "dt-instance-webserver"
+    restart: always
     depends_on:
       - scylla-db
       - scylla-manager
