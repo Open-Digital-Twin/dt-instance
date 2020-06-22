@@ -24,6 +24,8 @@ mod common;
 use common::db::get_db_session;
 use common::models::twin::*;
 
+use uuid::Uuid;
+
 #[tokio::main(basic_scheduler)]
 async fn main() {
   env_logger::init();
@@ -113,7 +115,7 @@ fn get_twin_elements() -> Vec<Element> {
   let session = get_db_session();
   let twin = env::var("TWIN_INSTANCE").unwrap();
 
-  let element_rows = session.query(format!("SELECT * FROM element WHERE twin = {} ALLOW FILTERING", twin))
+  let element_rows = session.query(format!("SELECT * FROM element WHERE twin = {}", twin))
     .expect("Elements from twin")
     .get_body().unwrap()
     .into_rows().unwrap();
@@ -144,7 +146,7 @@ fn get_sources(elements: Vec<Element>) -> Vec<Source> {
   }
   let element_ids = item_ids.join(",");
 
-  let source_rows = session.query(format!("SELECT * FROM source WHERE element IN ({}) ALLOW FILTERING", element_ids))
+  let source_rows = session.query(format!("SELECT * FROM source WHERE element IN ({})", element_ids))
     .expect("Sources from element")
     .get_body().unwrap()
     .into_rows().unwrap();
@@ -169,9 +171,9 @@ fn get_instance_topics() -> Vec<String> {
   
   let mut subscription_list: Vec<String> = Vec::new();
   for source in sources {
-    subscription_list.push(source.id.to_string());
+    subscription_list.push(source.data_topic());
   }
-
+  
   subscription_list
 }
 
