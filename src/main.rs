@@ -45,10 +45,21 @@ async fn main() {
   listen_topics(&mut eloop, &mut tx).await;
 }
 
+fn get_qos(variable: &str) -> QoS {
+  let qos_value = env::var(variable).unwrap().parse::<u8>().unwrap();
+
+  match qos_value {
+    0 => QoS::AtMostOnce,
+    1 => QoS::AtLeastOnce,
+    2 => QoS::ExactlyOnce,
+    _ => QoS::AtMostOnce
+  }
+}
+
 async fn connect_to_topics(mut tx: Sender<Request>) {
   task::spawn(async move {
     let twin = env::var("TWIN_INSTANCE").unwrap();
-    let qos = common::db::get_QoS("MQTT_INSTANCE_QOS");
+    let qos = get_qos("MQTT_INSTANCE_QOS");
 
     let mut subscribed_to: Vec<String> = Vec::new();
 
