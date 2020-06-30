@@ -44,6 +44,8 @@ services:
       - "1883:1883"
     networks:
       - default
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
   scylla-manager:
     image: scylladb/scylla-manager
     container_name: scylla-manager
