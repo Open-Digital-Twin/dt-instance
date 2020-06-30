@@ -48,6 +48,7 @@ async fn main() {
 async fn connect_to_topics(mut tx: Sender<Request>) {
   task::spawn(async move {
     let twin = env::var("TWIN_INSTANCE").unwrap();
+    let qos = common::db::get_QoS("MQTT_INSTANCE_QOS");
 
     let mut subscribed_to: Vec<String> = Vec::new();
 
@@ -80,7 +81,7 @@ async fn connect_to_topics(mut tx: Sender<Request>) {
         info!("Adding {} topics.", subscribe_list.len());
         for topic in subscribe_list {
           subscribed_to.push(topic.clone());
-          let subscription = Subscribe::new(topic, QoS::AtLeastOnce);
+          let subscription = Subscribe::new(topic, qos);
           let _ = tx.send(Request::Subscribe(subscription)).await;
         }
       }
