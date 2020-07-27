@@ -36,6 +36,8 @@ async fn main() {
   let host = env::var("MQTT_BROKER_ADDRESS").unwrap();
   let port = env::var("MQTT_BROKER_PORT").unwrap().parse::<u16>().unwrap();
 
+  info!("Connecting to broker at {}:{}", host, port);
+
   let mut mqttoptions = MqttOptions::new(format!("twin-{}", twin), host, port);
   mqttoptions.set_keep_alive(5).set_throttle(Duration::from_secs(1));
 
@@ -61,132 +63,16 @@ async fn connect_to_topics(mut tx: Sender<Request>) {
     let twin = env::var("TWIN_INSTANCE").unwrap();
     let qos = get_qos("MQTT_INSTANCE_QOS");
 
-    let mut subscribed_to: Vec<String> = Vec::new();
-
     loop {
-      info!("Refreshing topics for twin {}", twin);
+      let topic = format!("{}/+/+", twin);
+      info!("Refreshing topics for twin {} - Listen to {}", twin, topic);
 
-      let topics = get_instance_topics();
-      info!("Listening to {} topics.", topics.len());
-
-      let (subscribe_list, unsubscribe_list) = get_subscribe_and_unsubscribe_lists(&subscribed_to, &topics);
-
-      if !unsubscribe_list.is_empty() {
-        for topic in unsubscribe_list.clone() {
-          match subscribed_to.binary_search(&topic) {
-            Ok(index) => { subscribed_to.remove(index); },
-            Err(e) => { error!("Error finding topic to unsubscribe: {}", e); }
-          }
-        }
-  
-        // TODO: Rumq does not support unsubscribe as of 17/06/2020.
-        // Refactor and include when possible.
-        // 
-        //   let _ = tx.send(Request::Unsubscribe(Unsubscribe {
-        //     pkid: PacketIdentifier(0),
-        //     topics: unsubscribe_list
-        //   })).await;
-      }
-
-      if !subscribe_list.is_empty() {
-        info!("Adding {} topics.", subscribe_list.len());
-        for topic in subscribe_list {
-          subscribed_to.push(topic.clone());
-          let subscription = Subscribe::new(topic, qos);
-          let _ = tx.send(Request::Subscribe(subscription)).await;
-        }
-      }
-
-      subscribed_to.sort_unstable();
+      let subscription = Subscribe::new(topic, qos);
+      let _ = tx.send(Request::Subscribe(subscription)).await;
   
       time::delay_for(Duration::from_secs(30)).await;
     }
   });
-}
-
-fn get_subscribe_and_unsubscribe_lists(subscribed_to: &Vec<String>, current_topics: &Vec<String>) -> (Vec<String>, Vec<String>) {
-  let mut subscribe_list: Vec<String> = Vec::new();
-  let mut unsubscribe_list: Vec<String> = Vec::new();
-
-  for topic in current_topics {
-    if !subscribed_to.contains(topic) {
-      subscribe_list.push((*topic).clone());
-    }
-  }
-
-  for topic in subscribed_to {
-    if !current_topics.contains(topic) {
-      unsubscribe_list.push((*topic).clone());
-    }
-  }
-
-  (subscribe_list, unsubscribe_list)
-}
-
-fn get_twin_elements() -> Vec<Element> {
-  let session = get_db_session();
-  let twin = env::var("TWIN_INSTANCE").unwrap();
-
-  let element_rows = session.query(format!("SELECT * FROM element WHERE twin = {}", twin))
-    .expect("Elements from twin")
-    .get_body().unwrap()
-    .into_rows().unwrap();
-  
-  let mut elements: Vec<Element> = Vec::new();
- 
-  if !element_rows.is_empty() {
-    for row in element_rows {
-      match Element::try_from_row(row.clone()) {
-        Ok(element) => elements.push(element),
-        Err(_) => {}
-      }
-    }
-  }
-
-  info!("Found {} elements in twin.", elements.len());
-
-  return elements; 
-}
-
-fn get_sources(elements: Vec<Element>) -> Vec<Source> {
-  let session = get_db_session();
-  let mut sources: Vec<Source> = Vec::new();
-
-  let mut item_ids: Vec<String> = Vec::new();
-  for element in elements {
-    item_ids.push(element.id.to_string());
-  }
-  let element_ids = item_ids.join(",");
-
-  let source_rows = session.query(format!("SELECT * FROM source WHERE element IN ({})", element_ids))
-    .expect("Sources from element")
-    .get_body().unwrap()
-    .into_rows().unwrap();
-  
-  if !source_rows.is_empty() {
-    for row in source_rows {
-      match Source::try_from_row(row.clone()) {
-        Ok(source) => sources.push(source),
-        Err(_) => {}
-      }
-    }
-  }
-
-  info!("Found {} sources in twin elements.", sources.len());
-
-  return sources;
-}
-
-fn get_instance_topics() -> Vec<String> {
-  let elements = get_twin_elements();
-  let sources = get_sources(elements);
-  
-  let mut subscription_list: Vec<String> = Vec::new();
-  for source in sources {
-    subscription_list.push(source.data_topic());
-  }
-  
-  subscription_list
 }
 
 async fn listen_topics(eloop: &mut MqttEventLoop, tx: & Sender<Request>) {  
@@ -221,7 +107,7 @@ async fn listen_topics(eloop: &mut MqttEventLoop, tx: & Sender<Request>) {
 }
 
 fn handle_message(topic: String, message: String) {
-  info!("{}:: {}", topic, message);
+  info!("{}::\"{}\"", topic, message);
 
   let session = get_db_session();
 
