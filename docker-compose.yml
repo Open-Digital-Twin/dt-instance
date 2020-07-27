@@ -1,7 +1,7 @@
 version: '3'
 services:
   client:
-    build: ../dt-client
+    build: ../dt-client-bytes
     depends_on:
       - mqtt-broker
       - twin
@@ -10,6 +10,7 @@ services:
       - MQTT_BROKER_ADDRESS=mqtt-broker
       - MQTT_BROKER_PORT=1883
       - MQTT_CLIENT_QOS=0
+      - MQTT_CLIENT_BUFFER_BYTE_SIZE=8
   twin:
     build: .
     depends_on:
@@ -42,13 +43,14 @@ services:
   mqtt-broker:
     image: "opendigitaltwin/mosquitto:latest"
     container_name: mqtt-broker
-    expose: [1883]      
-    # ports:
-      # - "1883:1883"
+    # expose: [1883]
+    ports:
+      - "1883:1883"
     networks:
       - default
     volumes:
       - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: always
   scylla-manager:
     image: scylladb/scylla-manager
     container_name: scylla-manager

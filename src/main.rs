@@ -63,15 +63,15 @@ async fn connect_to_topics(mut tx: Sender<Request>) {
     let twin = env::var("TWIN_INSTANCE").unwrap();
     let qos = get_qos("MQTT_INSTANCE_QOS");
 
-    loop {
+    // loop {
       let topic = format!("{}/+/+", twin);
       info!("Refreshing topics for twin {} - Listen to {}", twin, topic);
 
       let subscription = Subscribe::new(topic, qos);
       let _ = tx.send(Request::Subscribe(subscription)).await;
   
-      time::delay_for(Duration::from_secs(30)).await;
-    }
+      // time::delay_for(Duration::from_secs(30)).await;
+    // }
   });
 }
 
@@ -107,18 +107,20 @@ async fn listen_topics(eloop: &mut MqttEventLoop, tx: & Sender<Request>) {
 }
 
 fn handle_message(topic: String, message: String) {
-  info!("{}::\"{}\"", topic, message);
+  let tokens: Vec<&str> = topic.as_str().split("/").collect();
+  let source = tokens[2];
+  info!("{} \"{}\"", source, message);
 
   let session = get_db_session();
 
   let response = session.query(format!(
-    "INSERT INTO source_data (source, stamp, value, created_at) VALUES ({}, toTimestamp(now()), '{}', toTimestamp(now()) )",
-    topic, message
+    "INSERT INTO source_data (source, stamp, value, created_at) VALUES ({}, toTimestamp(now()), '{}', toTimestamp(now()))",
+    source, message
   ));
 
   match response {
-    Ok(_) => info!("Inserted data for source {}.", topic),
-    Err(_) => error!("Error inserting data for source {}.", topic)
+    Ok(_) => info!("Inserted data for source {}.", source),
+    Err(_) => error!("Error inserting data for source {}.", source)
   }
 }
 
