@@ -9,8 +9,10 @@ services:
       - RUST_LOG=info
       - MQTT_BROKER_ADDRESS=mqtt-broker
       - MQTT_BROKER_PORT=1883
-      - MQTT_CLIENT_QOS=0
+      - MQTT_CLIENT_QOS=1
       - MQTT_CLIENT_BUFFER_BYTE_SIZE=8
+      - MQTT_CLIENT_MESSAGES_TO_SEND=100
+      - MQTT_CLIENT_MESSAGE_DELAY_MS=50
   twin:
     build: .
     depends_on:

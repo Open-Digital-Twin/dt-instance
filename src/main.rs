@@ -1,7 +1,8 @@
-use tokio::stream::StreamExt;
-use tokio::sync::mpsc::{channel, Sender, Receiver};
 use tokio::{task,time};
-use rumq_client::{eventloop,MqttEventLoop,MqttOptions, QoS, Request, Subscribe, Unsubscribe, PacketIdentifier};
+
+use rumqttc::{MqttOptions, QoS, EventLoop, Request, Subscribe, Publish, Incoming, Outgoing};
+use async_channel::{Sender};
+
 use chrono::prelude::*;
 
 use std::time::Duration;
@@ -39,12 +40,46 @@ async fn main() {
   info!("Connecting to broker at {}:{}", host, port);
 
   let mut mqttoptions = MqttOptions::new(format!("twin-{}", twin), host, port);
-  mqttoptions.set_keep_alive(5).set_throttle(Duration::from_secs(1));
+  mqttoptions.set_keep_alive(30);
 
-  let (mut tx,rx) = channel(10);
-  let mut eloop = eventloop(mqttoptions, rx);
+  let mut eloop = EventLoop::new(mqttoptions, 20).await;
+  let mut tx = eloop.handle();
 
-  listen_topics(&mut eloop, &mut tx).await;
+
+  connect_to_topics(tx.clone()).await;
+
+  loop {
+    match eloop.poll().await {
+      Ok(stream) => {
+        let (incoming, _outgoing) = stream;
+
+        if incoming.is_some() {
+          match incoming.unwrap() {
+            Incoming::PubAck(ack) => {
+              info!("{:?}", ack);
+            },
+            Incoming::SubAck(ack) => {
+              info!("{:?}", ack);
+            },
+            Incoming::Publish(publish) => {
+              let message = String::from_utf8(publish.payload.to_vec()).expect("Convert message payload");
+              let topic = publish.topic;
+              
+              handle_message(topic, message);
+            },
+            Incoming::Disconnect => {
+              info!("Connection aborted. Reconnecting...");
+              connect_to_topics(tx.clone()).await;
+            },
+            _ => {}
+          }
+        }
+      },
+      Err(e) => { error!("{:?}", e); }
+    }
+
+    time::delay_for(Duration::from_millis(10)).await;
+  }
 }
 
 fn get_qos(variable: &str) -> QoS {
@@ -57,53 +92,21 @@ fn get_qos(variable: &str) -> QoS {
     _ => QoS::AtMostOnce
   }
 }
-
-async fn connect_to_topics(mut tx: Sender<Request>) {
+async fn connect_to_topics(tx: Sender<Request>) {
   task::spawn(async move {
     let twin = env::var("TWIN_INSTANCE").unwrap();
     let qos = get_qos("MQTT_INSTANCE_QOS");
 
     // loop {
-      let topic = format!("{}/+/+", twin);
-      info!("Refreshing topics for twin {} - Listen to {}", twin, topic);
+    let topic = format!("{}/+/+", twin);
+    info!("Refreshing topics for twin {} - Listen to {}", twin, topic);
 
-      let subscription = Subscribe::new(topic, qos);
-      let _ = tx.send(Request::Subscribe(subscription)).await;
+    let subscription = Subscribe::new(topic, qos);
+    let _ = tx.send(Request::Subscribe(subscription)).await;
   
       // time::delay_for(Duration::from_secs(30)).await;
     // }
   });
-}
-
-async fn listen_topics(eloop: &mut MqttEventLoop, tx: & Sender<Request>) {  
-  connect_to_topics(tx.clone()).await;
-
-  loop {
-    let mut stream = eloop.connect().await.unwrap(); // TODO handle connection error. If broker doesn't exist, it crashes here.
-
-    while let Some(item) = stream.next().await {
-      match item {
-        rumq_client::Notification::Puback(ack) => {
-          info!("{:?}", ack);
-        },
-        rumq_client::Notification::Suback(ack) => {
-          info!("{:?}", ack);
-        },
-        rumq_client::Notification::Publish(publish) => {
-          let message = String::from_utf8(publish.payload).expect("Convert message payload");
-  
-          let topic = publish.topic_name;
-  
-          handle_message(topic, message);
-        },
-        rumq_client::Notification::Abort(_) => {
-          info!("Connection aborted.");
-        },
-        _ => handle_message_error(item)
-      }
-    }
-    time::delay_for(Duration::from_secs(1)).await;
-  }
 }
 
 fn handle_message(topic: String, message: String) {
@@ -124,6 +127,3 @@ fn handle_message(topic: String, message: String) {
   }
 }
 
-fn handle_message_error(notification: rumq_client::Notification) {
-  error!("{:?}", notification);
-}
