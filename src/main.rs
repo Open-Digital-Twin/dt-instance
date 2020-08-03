@@ -43,9 +43,7 @@ async fn main() {
   mqttoptions.set_keep_alive(30);
 
   let mut eloop = EventLoop::new(mqttoptions, 20).await;
-  let mut tx = eloop.handle();
-
-  connect_to_topics(tx.clone()).await;
+  let tx = eloop.handle();
 
   loop {
     match eloop.poll().await {
@@ -54,6 +52,9 @@ async fn main() {
 
         if incoming.is_some() {
           match incoming.unwrap() {
+            Incoming::Connected => {
+              connect_to_topics(tx.clone()).await;
+            },
             Incoming::PubAck(ack) => {
               info!("{:?}", ack);
             },
@@ -67,15 +68,17 @@ async fn main() {
               handle_message(topic, message);
             },
             Incoming::Disconnect => {
-              info!("Connection aborted. Reconnecting...");
+              info!("Connection disconnected. Reconnecting...");
               connect_to_topics(tx.clone()).await;
             },
-            _ => {}
+            _ => {
+              error!("Unhandled incoming.");
+            }
           }
         }
       },
       Err(e) => {
-        error!("{:?}", e);
+        error!("MQTT ERROR: {:?}", e);
         time::delay_for(Duration::from_millis(150)).await;
       }
     }
@@ -99,15 +102,11 @@ async fn connect_to_topics(tx: Sender<Request>) {
     let twin = env::var("TWIN_INSTANCE").unwrap();
     let qos = get_qos("MQTT_INSTANCE_QOS");
 
-    // loop {
     let topic = format!("{}/+/+", twin);
     info!("Refreshing topics for twin {} - Listen to {}", twin, topic);
 
     let subscription = Subscribe::new(topic, qos);
     let _ = tx.send(Request::Subscribe(subscription)).await;
-  
-      // time::delay_for(Duration::from_secs(30)).await;
-    // }
   });
 }
 
