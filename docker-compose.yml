@@ -52,6 +52,8 @@ services:
       - default
     volumes:
       - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/log:/mosquitto/log
+      - ./mosquitto/data:/mosquitto/data
     restart: always
   scylla-manager:
     image: scylladb/scylla-manager

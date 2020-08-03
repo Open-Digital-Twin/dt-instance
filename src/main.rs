@@ -45,7 +45,6 @@ async fn main() {
   let mut eloop = EventLoop::new(mqttoptions, 20).await;
   let mut tx = eloop.handle();
 
-
   connect_to_topics(tx.clone()).await;
 
   loop {
@@ -75,10 +74,13 @@ async fn main() {
           }
         }
       },
-      Err(e) => { error!("{:?}", e); }
+      Err(e) => {
+        error!("{:?}", e);
+        time::delay_for(Duration::from_millis(150)).await;
+      }
     }
 
-    time::delay_for(Duration::from_millis(10)).await;
+    time::delay_for(Duration::from_millis(50)).await;
   }
 }
 
