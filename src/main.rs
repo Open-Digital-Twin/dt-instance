@@ -44,11 +44,11 @@ async fn main() {
 
   match env::var("TWIN_INSTANCE_MAX_PACKET_SIZE") {
     Ok(max_size) => {
-      info!("Set max packet size to {} bytes.", max_size);
+      info!("Set max packet size to {} KB.", max_size);
       mqttoptions.set_max_packet_size(max_size.parse::<usize>().unwrap());
     },
     Err(_) => {
-      info!("Using default packet size of {} bytes.", mqttoptions.max_packet.size);
+      info!("Using default packet size of {} KB.", mqttoptions.max_packet_size);
     }
   }
 
