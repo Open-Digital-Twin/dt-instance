@@ -47,7 +47,9 @@ async fn main() {
       info!("Set max packet size to {} bytes.", max_size);
       mqttoptions.set_max_packet_size(max_size.parse::<usize>().unwrap());
     },
-    Err(_) => {}
+    Err(_) => {
+      info!("Using default packet size of {} bytes.", mqttoptions.max_packet.size);
+    }
   }
 
   let mut eloop = EventLoop::new(mqttoptions, 20).await;
