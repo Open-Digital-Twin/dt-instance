@@ -42,6 +42,13 @@ async fn main() {
   let mut mqttoptions = MqttOptions::new(format!("twin-{}", twin), host, port);
   mqttoptions.set_keep_alive(30);
 
+  match env::var("TWIN_INSTANCE_MAX_PACKET_SIZE") {
+    Ok(max_size) => {
+      mqttoptions.set_max_packet_size(max_size);
+    },
+    Err(_) => {}
+  }
+
   let mut eloop = EventLoop::new(mqttoptions, 20).await;
   let tx = eloop.handle();
 
