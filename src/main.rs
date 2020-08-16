@@ -44,7 +44,7 @@ async fn main() {
 
   match env::var("TWIN_INSTANCE_MAX_PACKET_SIZE") {
     Ok(max_size) => {
-      mqttoptions.set_max_packet_size(max_size);
+      mqttoptions.set_max_packet_size(max_size.parse::<usize>().unwrap());
     },
     Err(_) => {}
   }
