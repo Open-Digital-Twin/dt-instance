@@ -42,6 +42,16 @@ async fn main() {
   let mut mqttoptions = MqttOptions::new(format!("twin-{}", twin), host, port);
   mqttoptions.set_keep_alive(30);
 
+  match env::var("TWIN_INSTANCE_MAX_PACKET_SIZE") {
+    Ok(max_size) => {
+      info!("Set max packet size to {} KB.", max_size);
+      mqttoptions.set_max_packet_size(max_size.parse::<usize>().unwrap(), max_size.parse::<usize>().unwrap());
+    },
+    Err(_) => {
+      info!("Using default packet size of {} KB.", mqttoptions.max_packet_size());
+    }
+  }
+
   let (mut _client, mut eloop) = AsyncClient::new(mqttoptions, 20);
   let tx = eloop.handle();
 
