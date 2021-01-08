@@ -1,6 +1,6 @@
 use tokio::{task,time};
 
-use rumqttc::{MqttOptions, QoS, EventLoop, Request, Subscribe, Publish, Incoming, Outgoing};
+use rumqttc::{MqttOptions, QoS, EventLoop, AsyncClient, Request, Subscribe, Publish, Incoming, Outgoing, Event};
 use async_channel::{Sender};
 
 use chrono::prelude::*;
@@ -27,7 +27,7 @@ use common::models::twin::*;
 
 use uuid::Uuid;
 
-#[tokio::main(basic_scheduler)]
+#[tokio::main]
 async fn main() {
   env_logger::init();
   
@@ -42,48 +42,49 @@ async fn main() {
   let mut mqttoptions = MqttOptions::new(format!("twin-{}", twin), host, port);
   mqttoptions.set_keep_alive(30);
 
-  let mut eloop = EventLoop::new(mqttoptions, 20).await;
+  let (mut _client, mut eloop) = AsyncClient::new(mqttoptions, 20);
   let tx = eloop.handle();
 
   loop {
     match eloop.poll().await {
-      Ok(stream) => {
-        let (incoming, _outgoing) = stream;
-
-        if incoming.is_some() {
-          match incoming.unwrap() {
-            Incoming::Connected => {
-              connect_to_topics(tx.clone()).await;
-            },
-            Incoming::PubAck(ack) => {
-              info!("{:?}", ack);
-            },
-            Incoming::SubAck(ack) => {
-              info!("{:?}", ack);
-            },
-            Incoming::Publish(publish) => {
-              let message = String::from_utf8(publish.payload.to_vec()).expect("Convert message payload");
-              let topic = publish.topic;
-              
-              handle_message(topic, message);
-            },
-            Incoming::Disconnect => {
-              info!("Connection disconnected. Reconnecting...");
-              connect_to_topics(tx.clone()).await;
-            },
-            _ => {
-              error!("Unhandled incoming.");
+      Ok(event) => {
+        match event {
+          Event::Incoming(packet) => {
+            match packet {
+              Incoming::ConnAck(_ack) => {
+                connect_to_topics(tx.clone()).await;
+              },
+              Incoming::PubAck(ack) => {
+                info!("{:?}", ack);
+              },
+              Incoming::SubAck(ack) => {
+                info!("{:?}", ack);
+              },
+              Incoming::Publish(publish) => {
+                let message = String::from_utf8(publish.payload.to_vec()).expect("Convert message payload");
+                let topic = publish.topic;
+                
+                handle_message(topic, message);
+              },
+              Incoming::Disconnect => {
+                info!("Connection disconnected. Reconnecting...");
+                connect_to_topics(tx.clone()).await;
+              },
+              _ => {
+                error!("Unhandled incoming.");
+              }
             }
-          }
-        }
+          },
+          _ => {}
+        }        
       },
       Err(e) => {
         error!("MQTT ERROR: {:?}", e);
-        time::delay_for(Duration::from_millis(150)).await;
+        time::sleep(Duration::from_millis(150)).await;
       }
     }
 
-    time::delay_for(Duration::from_millis(50)).await;
+    time::sleep(Duration::from_millis(50)).await;
   }
 }
 
