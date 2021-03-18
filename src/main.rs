@@ -113,7 +113,7 @@ async fn connect_to_topics(tx: Sender<Request>) {
     let twin = env::var("TWIN_INSTANCE").unwrap();
     let qos = get_qos("MQTT_INSTANCE_QOS");
 
-    let topic = format!("{}/+/+", twin);
+    let topic = env::var("MQTT_SUBSCRIBED_TOPIC").unwrap();
     info!("Refreshing topics for twin {} - Listen to {}", twin, topic);
 
     let subscription = Subscribe::new(topic, qos);
