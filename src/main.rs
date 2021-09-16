@@ -94,7 +94,7 @@ async fn main() {
       }
     }
 
-    time::sleep(Duration::from_millis(1)).await;
+//     time::sleep(Duration::from_millis(1)).await;
   }
 }
 
