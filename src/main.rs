@@ -124,7 +124,10 @@ async fn connect_to_topics(tx: Sender<Request>) {
 fn handle_message(topic: String, message: String) {
   let tokens: Vec<&str> = topic.as_str().split("/").collect();
   let source = tokens[2];
-  info!("{} \"{}\"", source, message);
+  
+//   info!("{} \"{}\"", source, message);
+  let payloadparse: Vec<&str> = message.as_str().split(" ").collect();
+  info!("{} \"{}\"", source, payloadparse[0]);
 
 // TEMP: remove saving to db.
 //   let session = get_db_session();
