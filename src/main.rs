@@ -126,16 +126,17 @@ fn handle_message(topic: String, message: String) {
   let source = tokens[2];
   info!("{} \"{}\"", source, message);
 
-  let session = get_db_session();
+// TEMP: remove saving to db.
+//   let session = get_db_session();
 
-  let response = session.query(format!(
-    "INSERT INTO source_data (source, stamp, value, created_at) VALUES ({}, toTimestamp(now()), '{}', toTimestamp(now()))",
-    source, message
-  ));
+//   let response = session.query(format!(
+//     "INSERT INTO source_data (source, stamp, value, created_at) VALUES ({}, toTimestamp(now()), '{}', toTimestamp(now()))",
+//     source, message
+//   ));
 
-  match response {
-    Ok(_) => info!("Inserted data for source {}.", source),
-    Err(_) => error!("Error inserting data for source {}.", source)
-  }
+//   match response {
+//     Ok(_) => info!("Inserted data for source {}.", source),
+//     Err(_) => error!("Error inserting data for source {}.", source)
+//   }
 }
 
