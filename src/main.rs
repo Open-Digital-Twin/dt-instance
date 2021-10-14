@@ -31,15 +31,22 @@ use uuid::Uuid;
 async fn main() {
   env_logger::init();
   
-  let twin = env::var("TWIN_INSTANCE").unwrap();
-  info!("Current Twin: {}", twin);
+  // TEMP: twin instance name is now randomized
+  //
+  //let twin = env::var("TWIN_INSTANCE").unwrap();
+  //info!("Current Twin: {}", twin);
+
+  let id: String = std::iter::repeat(())
+  .map(|()| thread_rng().sample(Alphanumeric))
+  .take(10).collect();
+
 
   let host = env::var("MQTT_BROKER_ADDRESS").unwrap();
   let port = env::var("MQTT_BROKER_PORT").unwrap().parse::<u16>().unwrap();
 
   info!("Connecting to broker at {}:{}", host, port);
 
-  let mut mqttoptions = MqttOptions::new(format!("twin-{}", twin), host, port);
+  let mut mqttoptions = MqttOptions::new(format!("twin-{}", id), host, port);
   mqttoptions.set_keep_alive(30);
 
   match env::var("TWIN_INSTANCE_MAX_PACKET_SIZE") {
