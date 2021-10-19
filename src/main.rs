@@ -133,9 +133,11 @@ fn handle_message(topic: String, message: String) {
   let source = tokens[2];
   
 //   info!("{} \"{}\"", source, message);
-  let payloadparse: Vec<&str> = message.as_str().split(" ").collect();
-  info!("{} \"{}\"", source, payloadparse[0]);
 
+  let payloadparse: Vec<&str> = message.split(" ").collect();
+  if payloadparse[0].parse::<i32>().unwrap() % 10 == 0{
+    info!("{} \"{}\" {}", source, payloadparse[0], payloadparse[2]);
+  }
 // TEMP: remove saving to db.
 //   let session = get_db_session();
 
