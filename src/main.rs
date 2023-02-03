@@ -21,9 +21,9 @@ extern crate cdrs_helpers_derive;
 use cdrs::query::*;
 use crate::cdrs::frame::TryFromRow; 
 
-mod common;
-use common::db::get_db_session;
-use common::models::twin::*;
+//mod common;
+//use common::db::get_db_session;
+//use common::models::twin::*;
 
 use uuid::Uuid;
 
@@ -34,19 +34,19 @@ async fn main() {
   // TEMP: twin instance name is now randomized
   //
   //let twin = env::var("TWIN_INSTANCE").unwrap();
-  //info!("Current Twin: {}", twin);
+  
 
-  let id: String = std::iter::repeat(())
+  let no_id: String = std::iter::repeat(())
   .map(|()| thread_rng().sample(Alphanumeric))
-  .take(10).collect();
-
-
+  .take(15).collect();
+  let id: String = env::var("TWIN_INSTANCE_NAME").unwrap_or(no_id);
+  info!("Current Twin: {}", id);
   let host = env::var("MQTT_BROKER_ADDRESS").unwrap();
   let port = env::var("MQTT_BROKER_PORT").unwrap().parse::<u16>().unwrap();
 
   info!("Connecting to broker at {}:{}", host, port);
 
-  let mut mqttoptions = MqttOptions::new(format!("twin-{}", id), host, port);
+  let mut mqttoptions = MqttOptions::new(id, host, port);
   mqttoptions.set_keep_alive(30);
 
   match env::var("TWIN_INSTANCE_MAX_PACKET_SIZE") {
@@ -117,11 +117,10 @@ fn get_qos(variable: &str) -> QoS {
 }
 async fn connect_to_topics(tx: Sender<Request>) {
   task::spawn(async move {
-    let twin = env::var("TWIN_INSTANCE").unwrap();
     let qos = get_qos("MQTT_INSTANCE_QOS");
 
     let topic = env::var("MQTT_SUBSCRIBED_TOPIC").unwrap();
-    info!("Refreshing topics for twin {} - Listen to {}", twin, topic);
+    info!("Refreshing topics for twin - Listen to {}", topic);
 
     let subscription = Subscribe::new(topic, qos);
     let _ = tx.send(Request::Subscribe(subscription)).await;
