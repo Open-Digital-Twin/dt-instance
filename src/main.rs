@@ -1,9 +1,10 @@
 use tokio::{task,time};
 
-use rumqttc::{MqttOptions, QoS, EventLoop, AsyncClient, Request, Subscribe, Publish, Incoming, Outgoing, Event};
+use rumqttc::{MqttOptions, QoS, AsyncClient, Request, Subscribe, Incoming,Event};
+//use rumqttc::{EventLoop, Publish, Outgoing,};
 use async_channel::{Sender};
 use rand::{distributions::Alphanumeric, Rng, thread_rng};
-use chrono::prelude::*;
+use chrono::Utc;
 
 use std::time::Duration;
 use std::env;
@@ -16,16 +17,16 @@ use log::{info, error};
 #[allow(unused_imports)]
 extern crate cdrs;
 
-#[macro_use]
+//#[macro_use]
 extern crate cdrs_helpers_derive;
-use cdrs::query::*;
-use crate::cdrs::frame::TryFromRow; 
+//use cdrs::query::*;
+//use crate::cdrs::frame::TryFromRow; 
 
 //mod common;
 //use common::db::get_db_session;
 //use common::models::twin::*;
 
-use uuid::Uuid;
+//use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
@@ -43,8 +44,10 @@ async fn main() {
   info!("Current Twin: {}", id);
   let host = env::var("MQTT_BROKER_ADDRESS").unwrap();
   let port = env::var("MQTT_BROKER_PORT").unwrap().parse::<u16>().unwrap();
+  let log_each = env::var("LOG_EACH").unwrap_or(10.to_string()).parse::<i32>().unwrap();
 
   info!("Connecting to broker at {}:{}", host, port);
+  info!("Loggin info each {} messages", log_each);
 
   let mut mqttoptions = MqttOptions::new(id, host, port);
   mqttoptions.set_keep_alive(30);
@@ -61,7 +64,7 @@ async fn main() {
 
   let (mut _client, mut eloop) = AsyncClient::new(mqttoptions, 20);
   let tx = eloop.handle();
-
+  let mut message_counter = 0;
   loop {
     match eloop.poll().await {
       Ok(event) => {
@@ -78,10 +81,13 @@ async fn main() {
                 info!("{:?}", ack);
               },
               Incoming::Publish(publish) => {
-                let message = String::from_utf8(publish.payload.to_vec()).expect("Convert message payload");
-                let topic = publish.topic;
-                
-                handle_message(topic, message);
+                message_counter += 1;
+                //print!("message counter - {} message counter%10 - {} ", message_counter, message_counter%10);
+                if message_counter % log_each == 0 {
+                  let message = String::from_utf8(publish.payload.to_vec()).expect("Convert message payload");
+                  let topic = publish.topic;
+                  handle_message(topic, message);
+                }
               },
               Incoming::Disconnect => {
                 info!("Connection disconnected. Reconnecting...");
@@ -132,11 +138,9 @@ fn handle_message(topic: String, message: String) {
   let source = tokens[2];
   
 //   info!("{} \"{}\"", source, message);
-
+  let dt = Utc::now().to_string();
   let payloadparse: Vec<&str> = message.split(" ").collect();
-  if payloadparse[0].parse::<i32>().unwrap() % 10 == 0{
-    info!("{} \"{}\" {}", source, payloadparse[0], payloadparse[2]);
-  }
+  info!("received at {} - {} \"{}\" {}",dt , source, payloadparse[0], payloadparse[2]);
 // TEMP: remove saving to db.
 //   let session = get_db_session();
 
