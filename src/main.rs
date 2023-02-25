@@ -134,7 +134,7 @@ async fn connect_to_topics(tx: Sender<Request>) {
 }
 
 fn handle_message(topic: String, message: String) {
-  let tokens: Vec<&str> = topic.as_str().split("/").collect();
+  let tokens: Vec<&str> = topic.as_str().split("_").collect();
   let source = tokens[2];
   
 //   info!("{} \"{}\"", source, message);
