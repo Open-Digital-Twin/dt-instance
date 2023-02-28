@@ -36,12 +36,28 @@ async fn main() {
   //
   //let twin = env::var("TWIN_INSTANCE").unwrap();
   
-
+  let container_delay = env::var("CONTAINER_DELAY_S").unwrap_or("0".to_string()).parse::<u64>().unwrap();
   let no_id: String = std::iter::repeat(())
   .map(|()| thread_rng().sample(Alphanumeric))
   .take(15).collect();
   let id: String = env::var("TWIN_INSTANCE_NAME").unwrap_or(no_id);
   info!("Current Twin: {}", id);
+  let pod_name = env::var("POD_NAME").unwrap_or("NO-POD-NAME-0".to_string());
+  let split = pod_name.split("-");
+  let split_name = split.collect::<Vec<&str>>();
+  let replica_n = split_name[3].parse::<u64>().unwrap();
+
+  if pod_name == "NO_POD_NAME" {
+    info!("No pod name given");
+    info!("Sleeping for {}" , container_delay);
+    time::sleep(Duration::from_secs(container_delay)).await;
+  }
+
+  else {
+    info!("Replica Name {}" , pod_name);
+    info!("Sleeping for {}" , (replica_n * container_delay));
+    time::sleep(Duration::from_secs(replica_n * container_delay)).await;
+  }
   let host = env::var("MQTT_BROKER_ADDRESS").unwrap();
   let port = env::var("MQTT_BROKER_PORT").unwrap().parse::<u16>().unwrap();
   let log_each = env::var("LOG_EACH").unwrap_or(10.to_string()).parse::<i32>().unwrap();
@@ -72,7 +88,7 @@ async fn main() {
           Event::Incoming(packet) => {
             match packet {
               Incoming::ConnAck(_ack) => {
-                connect_to_topics(tx.clone()).await;
+                connect_to_topics(tx.clone(), replica_n).await;
               },
               Incoming::PubAck(ack) => {
                 info!("{:?}", ack);
@@ -91,7 +107,7 @@ async fn main() {
               },
               Incoming::Disconnect => {
                 info!("Connection disconnected. Reconnecting...");
-                connect_to_topics(tx.clone()).await;
+                connect_to_topics(tx.clone(), replica_n).await;
               },
               _ => {
                 error!("Unhandled incoming.");
@@ -121,26 +137,37 @@ fn get_qos(variable: &str) -> QoS {
     _ => QoS::AtMostOnce
   }
 }
-async fn connect_to_topics(tx: Sender<Request>) {
+async fn connect_to_topics(tx: Sender<Request>, replica_n: u64) {
   task::spawn(async move {
     let qos = get_qos("MQTT_INSTANCE_QOS");
 
     let topic = env::var("MQTT_SUBSCRIBED_TOPIC").unwrap();
-    info!("Refreshing topics for twin - Listen to {}", topic);
+    let topic_levels = topic.split("/").collect::<Vec<&str>>();
+    let mut source = topic_levels[0].to_string();
+    source.push('-');
+    source.push_str(&replica_n.to_string());
+    let mut i = 1;
+    while i < topic_levels.len(){
+      source.push('/');
+      source.push_str(topic_levels[i]);
+      i += 1;
+    }
+    info!("Refreshing topics for twin - Listen to {}", source);
 
-    let subscription = Subscribe::new(topic, qos);
+    let subscription = Subscribe::new(source, qos);
     let _ = tx.send(Request::Subscribe(subscription)).await;
   });
 }
 
 fn handle_message(topic: String, message: String) {
-  let tokens: Vec<&str> = topic.as_str().split("_").collect();
-  let source = tokens[2];
+  let tokens: Vec<&str> = topic.as_str().split("/").collect();
+  let service = tokens[0];
+  let source = tokens[1];
   
 //   info!("{} \"{}\"", source, message);
-  let dt = Utc::now().to_string();
+  let date_time = Utc::now().to_string();
   let payloadparse: Vec<&str> = message.split(" ").collect();
-  info!("received at {} - {} \"{}\" {}",dt , source, payloadparse[0], payloadparse[2]);
+  info!("received at {} - from {}->{} \"{}\" {}",date_time, service, source, payloadparse[0], payloadparse[2]);
 // TEMP: remove saving to db.
 //   let session = get_db_session();
 
