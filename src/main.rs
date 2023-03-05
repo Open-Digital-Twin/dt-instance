@@ -1,8 +1,7 @@
 use tokio::{task,time};
 
-use rumqttc::{MqttOptions, QoS, AsyncClient, Request, Subscribe, Incoming, Event};
+use rumqttc::{MqttOptions, QoS, AsyncClient, Incoming, Event};
 //use rumqttc::{EventLoop, Publish, Outgoing,};
-use async_channel::{Sender};
 use rand::{distributions::Alphanumeric, Rng, thread_rng};
 use chrono::Utc;
 
@@ -22,9 +21,9 @@ extern crate cdrs_helpers_derive;
 //use cdrs::query::*;
 //use crate::cdrs::frame::TryFromRow; 
 
-//mod common;
-//use common::db::get_db_session;
-//use common::models::twin::*;
+// mod common;
+// use common::db::get_db_session;
+// use common::models::twin::*;
 
 //use uuid::Uuid;
 
@@ -49,7 +48,7 @@ async fn main() {
   info!("Logging info every \"{}\" messages", log_each);
 
   let mut mqttoptions = MqttOptions::new(id, host, port);
-  mqttoptions.set_keep_alive(30);
+  mqttoptions.set_keep_alive(Duration::from_secs(30));
 
   match env::var("TWIN_INSTANCE_MAX_PACKET_SIZE") {
     Ok(max_size) => {
@@ -61,8 +60,7 @@ async fn main() {
     }
   }
 
-  let (mut _client, mut eloop) = AsyncClient::new(mqttoptions, 20);
-  let tx = eloop.handle();
+  let (client, mut eloop) = AsyncClient::new(mqttoptions, 20);
   let mut message_counter = 0;
   loop {
     match eloop.poll().await {
@@ -71,7 +69,7 @@ async fn main() {
           Event::Incoming(packet) => {
             match packet {
               Incoming::ConnAck(_ack) => {
-                connect_to_topics(tx.clone()).await;
+                connect_to_topics(client.clone()).await;
               },
               Incoming::PubAck(ack) => {
                 info!("{:?}", ack);
@@ -90,7 +88,7 @@ async fn main() {
               },
               Incoming::Disconnect => {
                 info!("Connection disconnected. Reconnecting...");
-                connect_to_topics(tx.clone()).await;
+                connect_to_topics(client.clone()).await;
               },
               Incoming::PingResp => {},
               Incoming::PingReq => {},
@@ -123,31 +121,30 @@ fn get_qos(variable: &str) -> QoS {
   }
 }
 
-async fn connect_to_topics(tx: Sender<Request>) {
+async fn connect_to_topics(client: AsyncClient) {
   task::spawn(async move {
     let qos = get_qos("MQTT_INSTANCE_QOS");
 
     let topic = env::var("MQTT_SUBSCRIBED_TOPIC").unwrap();
     info!("Refreshing topics for twin - Listen to {}", topic);
 
-    let subscription = Subscribe::new(topic, qos);
-    let _ = tx.send(Request::Subscribe(subscription)).await;
+    client.subscribe(topic, qos).await.unwrap();
   });
 }
 
-fn add_to_db(source: String, message: String) {
-  let session = get_db_session();
+// fn add_to_db(source: String, message: String) {
+//   let session = get_db_session();
 
-  let response = session.query(format!(
-    "INSERT INTO source_data (source, stamp, value, created_at) VALUES ({}, toTimestamp(now()), '{}', toTimestamp(now()))",
-    source, message
-  ));
+//   let response = session.query(format!(
+//     "INSERT INTO source_data (source, stamp, value, created_at) VALUES ({}, toTimestamp(now()), '{}', toTimestamp(now()))",
+//     source, message
+//   ));
 
-  match response {
-    Ok(_) => info!("Inserted data for source {}.", source),
-    Err(_) => error!("Error inserting data for source {}.", source)
-  }
-}
+//   match response {
+//     Ok(_) => info!("Inserted data for source {}.", source),
+//     Err(_) => error!("Error inserting data for source {}.", source)
+//   }
+// }
 
 fn handle_message(topic: String, message: String) {
   let tokens: Vec<&str> = topic.as_str().split("_").collect();
