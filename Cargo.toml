@@ -1,14 +1,14 @@
 [package]
 name = "dt-instance"
 version = "0.1.0"
-authors = ["Rafael"]
-edition = "2018"
+authors = ["Francisco Paiva Knebel", "Rafael Trevisan"]
+edition = "2023"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 chrono = { version = "0.4.11", features = ["serde"] }
-rumqttc = "0.8.0"
+rumqttc = "0.20.0"
 async-channel = "1.1.1"
 tokio = { version = "1.0", features = ["full"] }
 cdrs = { version = "2" }

@@ -1,6 +1,6 @@
 use tokio::{task,time};
 
-use rumqttc::{MqttOptions, QoS, AsyncClient, Request, Subscribe, Incoming,Event};
+use rumqttc::{MqttOptions, QoS, AsyncClient, Request, Subscribe, Incoming, Event};
 //use rumqttc::{EventLoop, Publish, Outgoing,};
 use async_channel::{Sender};
 use rand::{distributions::Alphanumeric, Rng, thread_rng};
@@ -33,21 +33,20 @@ async fn main() {
   env_logger::init();
   
   // TEMP: twin instance name is now randomized
-  //
-  //let twin = env::var("TWIN_INSTANCE").unwrap();
-  
+  // let twin = env::var("TWIN_INSTANCE").unwrap();
 
   let no_id: String = std::iter::repeat(())
-  .map(|()| thread_rng().sample(Alphanumeric))
-  .take(15).collect();
+    .map(|()| thread_rng().sample(Alphanumeric))
+    .take(15).collect();
+  
   let id: String = env::var("TWIN_INSTANCE_NAME").unwrap_or(no_id);
   info!("Current Twin: {}", id);
   let host = env::var("MQTT_BROKER_ADDRESS").unwrap();
   let port = env::var("MQTT_BROKER_PORT").unwrap().parse::<u16>().unwrap();
-  let log_each = env::var("LOG_EACH").unwrap_or(10.to_string()).parse::<i32>().unwrap();
+  let log_each = env::var("LOG_EACH").unwrap_or(1.to_string()).parse::<i32>().unwrap();
 
   info!("Connecting to broker at {}:{}", host, port);
-  info!("Loggin info each {} messages", log_each);
+  info!("Logging info every \"{}\" messages", log_each);
 
   let mut mqttoptions = MqttOptions::new(id, host, port);
   mqttoptions.set_keep_alive(30);
@@ -93,6 +92,8 @@ async fn main() {
                 info!("Connection disconnected. Reconnecting...");
                 connect_to_topics(tx.clone()).await;
               },
+              Incoming::PingResp => {},
+              Incoming::PingReq => {},
               _ => {
                 error!("Unhandled incoming.");
               }
@@ -121,6 +122,7 @@ fn get_qos(variable: &str) -> QoS {
     _ => QoS::AtMostOnce
   }
 }
+
 async fn connect_to_topics(tx: Sender<Request>) {
   task::spawn(async move {
     let qos = get_qos("MQTT_INSTANCE_QOS");
@@ -133,25 +135,28 @@ async fn connect_to_topics(tx: Sender<Request>) {
   });
 }
 
-fn handle_message(topic: String, message: String) {
-  let tokens: Vec<&str> = topic.as_str().split("_").collect();
-  let source = tokens[2];
-  
-//   info!("{} \"{}\"", source, message);
-  let dt = Utc::now().to_string();
-  let payloadparse: Vec<&str> = message.split(" ").collect();
-  info!("received at {} - {} \"{}\" {}",dt , source, payloadparse[0], payloadparse[2]);
-// TEMP: remove saving to db.
-//   let session = get_db_session();
+fn add_to_db(source: String, message: String) {
+  let session = get_db_session();
 
-//   let response = session.query(format!(
-//     "INSERT INTO source_data (source, stamp, value, created_at) VALUES ({}, toTimestamp(now()), '{}', toTimestamp(now()))",
-//     source, message
-//   ));
+  let response = session.query(format!(
+    "INSERT INTO source_data (source, stamp, value, created_at) VALUES ({}, toTimestamp(now()), '{}', toTimestamp(now()))",
+    source, message
+  ));
 
-//   match response {
-//     Ok(_) => info!("Inserted data for source {}.", source),
-//     Err(_) => error!("Error inserting data for source {}.", source)
-//   }
+  match response {
+    Ok(_) => info!("Inserted data for source {}.", source),
+    Err(_) => error!("Error inserting data for source {}.", source)
+  }
 }
 
+fn handle_message(topic: String, message: String) {
+  let tokens: Vec<&str> = topic.as_str().split("_").collect();
+  let source = tokens[tokens.len()-1];
+  
+  // info!("{} \"{}\"", source, message);
+  let dt = Utc::now().to_string();
+  let payloadparse: Vec<&str> = message.split(" ").collect();
+  info!("received at {} - {} \"{}\" {}", dt, source, payloadparse[0], payloadparse[2]);
+
+  // add_to_db(source, message);
+}
