@@ -49,6 +49,7 @@ async fn main() {
 
   let mut mqttoptions = MqttOptions::new(id, host, port);
   mqttoptions.set_keep_alive(Duration::from_secs(30));
+  mqttoptions.set_clean_session(true);
 
   match env::var("TWIN_INSTANCE_MAX_PACKET_SIZE") {
     Ok(max_size) => {
