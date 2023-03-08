@@ -53,7 +53,6 @@ async fn main() {
     info!("Sleeping for {}" , container_delay);
     time::sleep(Duration::from_secs(container_delay)).await;
   }
-
   else {
     info!("Replica Name {}" , pod_name);
     info!("Sleeping for {}" , (replica_n * container_delay));
