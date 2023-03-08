@@ -40,13 +40,14 @@ async fn main() {
   let no_id: String = std::iter::repeat(())
   .map(|()| thread_rng().sample(Alphanumeric))
   .take(15).collect();
-  let id: String = env::var("TWIN_INSTANCE_NAME").unwrap_or(no_id);
-  info!("Current Twin: {}", id);
+  let mut id: String = env::var("TWIN_INSTANCE_NAME").unwrap_or(no_id);
   let pod_name = env::var("POD_NAME").unwrap_or("NO-POD-NAME-0".to_string());
   let split = pod_name.split("-");
   let split_name = split.collect::<Vec<&str>>();
   let replica_n = split_name[3].parse::<u64>().unwrap();
 
+  id.push_str(&replica_n.to_string());
+  info!("Current Twin: {}", id);
   if pod_name == "NO_POD_NAME" {
     info!("No pod name given");
     info!("Sleeping for {}" , container_delay);
