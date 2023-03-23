@@ -62,7 +62,6 @@ async fn main() {
   }
 
   let (client, mut eloop) = AsyncClient::new(mqttoptions, 20);
-  let mut message_counter = 0;
   loop {
     match eloop.poll().await {
       Ok(event) => {
@@ -79,10 +78,10 @@ async fn main() {
                 info!("{:?}", ack);
               },
               Incoming::Publish(publish) => {
-                message_counter += 1;
-                //print!("message counter - {} message counter%10 - {} ", message_counter, message_counter%10);
-                if message_counter % log_each == 0 {
-                  let message = String::from_utf8(publish.payload.to_vec()).expect("Convert message payload");
+                let message = String::from_utf8(publish.payload.to_vec()).expect("Convert message payload");
+                let count = message.split(" ").collect::<Vec<&str>>()[0].parse::<i32>().unwrap();
+
+                if count % log_each == 0 {
                   let topic = publish.topic;
                   handle_message(topic, message);
                 }
@@ -151,7 +150,6 @@ fn handle_message(topic: String, message: String) {
   let tokens: Vec<&str> = topic.as_str().split("_").collect();
   let source = tokens[tokens.len()-1];
   
-  // info!("{} \"{}\"", source, message);
   let dt = Utc::now().to_string();
   let payloadparse: Vec<&str> = message.split(" ").collect();
   info!("received at {} - {} \"{}\" {}", dt, source, payloadparse[0], payloadparse[2]);
