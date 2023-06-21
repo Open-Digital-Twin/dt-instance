@@ -110,7 +110,7 @@ async fn main() {
                 connect_to_topics(tx.clone(), replica_n).await;
               },
               _ => {
-                error!("Unhandled incoming.");
+                //error!("Unhandled incoming.");
               }
             }
           },
